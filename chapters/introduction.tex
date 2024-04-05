@@ -96,11 +96,17 @@ Yet this work, in turn, assumes that the user knows the values of the sensitive 
 
 \section{Our contribution}\label{sect:int_4}
 
+\subsection{A group-oblivious fairness algorithm}
+
 Our approach to fairness without demographics is inspired by work on Differential Privacy by Dwork et al. \cite{foundationsofDPDwork}, where noise is admixed into database records to protect the users’ privacy. Similarly, we “mix up” a ranking (which may be the output of an ML model) by sampling the Mallows’ distribution \cite{mallows}; by changing the variance of the latter, we can achieve different results in terms of fairness.
 
 This does not require any information on group membership; in fact, the only necessary information is the order in which the candidates are ranked. Furthermore, this process is computationally fast: it just needs one sample from a random distribution.
 
 The research this thesis is based on is due to be presented at the 1st International Workshop on Fairness in AI (\url{https://fairnessinai.github.io/}); the workshop paper preprint is available at \url{https://arxiv.org/abs/2403.19419v1}.
+
+\subsection{Contribution to AIF360}
+
+As part of my internship and thesis work, I implemented one of the state-of-the-art algorithms for fairness in rankings described here, DetConstSort \cite{linkedin}, and contributed it to the IBM-sponsored AI Fairness 360 Python toolkit (\url{https://github.com/Trusted-AI/AIF360/pull/461}) along with several metrics for dealing with fairness in rankings, unit tests, a usage demo in Jupyter Notebook, and other supporting code.
 
 \section{Thesis structure}\label{sect:structure}
 
@@ -114,7 +120,5 @@ This thesis is organized as follows:
 
 
 \section{Code availability}\label{sect:code_availability}
-
-One of the algorithms used in this work, DetConstSort \cite{linkedin}, as well as several supporting metrics for rankings and fairness, were implemented and published in the IBM-sponsored AI Fairness 360 Python toolkit (\href{https://github.com/Trusted-AI/AIF360}{https://github.com/Trusted-AI/AIF360}) as part of my internship at the Czech Technical University in Prague.
 
 The full code used for the Experiments section of this thesis can be accessed at \url{https://github.com/andrewklayk/fairness_with_mallows_distribution}.
