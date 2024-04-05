@@ -1,0 +1,197 @@
+%!TEX root = ../dissertation.tex
+
+
+\newcommand{\Prob}{\text{I\kern-0.15em P}}
+
+
+\chapter{Algorithms}\label{chapt:algorithms}
+
+There are several ways to classify algorithms used for mitigation of bias in rankings. Most commonly, they are categorized into pre-, in-, and post-processing. Pre-processing methods seek to mitigate bias in the data before it is used for training a ranking model. In-processing methods modify the ranking model (usually, by altering the loss function) so that the outcome is bias-free. Post-processing methods reorder the output ranking so that it satisfies fairness constraints.
+
+In this thesis, I focus on post-processing algorithms. Such methods offer several advantages, as noted in \cite{3533380}:
+\begin{itemize}
+\item Most of them come with firm theoretical guarantees on the fairness of the output – which is not the case with in-processing algorithms that are intended to produce a trade-off between fairness and accuracy;
+\item Their effect is much more clear than that of other methods: while pre- and in-processing algorithms intervene in some way on the training data or the loss function, post-processing methods «simply» reorder the output, usually according to easily understandable rules. This makes them more easily analyzable and explainable – the latter being a very important property of decision-making algorithms, as noted in chapter WHICH of \cite{fairmlbook}.
+\end{itemize}
+Those advantages, however, come with greater loss in accuracy than that of pre- and in-processing methods. On the other hand, if bias is present in the scoring function, the decrease in accuracy may not be at all representative of the real-life impact \cite{3533380}.
+
+In addition to those points, I suggest another quite apparent benefit: most post-processing algorithms do not require access to either the training data or the ranking model; just the scores produced by the latter. As such, they are easy to introduce into the pipeline of a ranking system – as it was done, for example, at LinkedIn \cite{linkedin}.
+
+The same paper also classifies algorithms according to their underlying worldview – either WYSIWYG or WAE, described in Chapter \ref{chapt:background}, and the type of bias the algorithm can mitigate (pre-existing, technical, or emergent).
+
+\section{State-of-the-art post-processing algorithms}\label{sect:existing}
+
+\subsection{DetConstSort}\label{subsect:dcs}
+
+Geyik et al. in \cite{linkedin} introduce four post-processing ranking algorithms that intervene on the ranked output: DetGreedy, DetCons, DetRelaxed and DetConstSort. Among those, the only algorithm the authors prove the theoretical feasibility for is DetConstSort. Every algorithm introduced in the paper intervenes on the output ranking by introducing minimum and maximum representation constraints for each group at each k:
+
+\small
+\begin{equation}
+\label{eq:feasibility_lower}
+\forall k \leq |\tau_r| ~ \& ~ \forall a_i \in A, ~ count_k(a_i) \leq \lceil p_{a_i} \cdot k \rceil~, ~ and,
+\end{equation}
+\begin{equation}
+\label{eq:feasibility_upper}
+\forall k \leq |\tau_r| ~ \& ~ \forall a_i \in A, ~ count_k(a_i) \geq \lfloor p_{a_i} \cdot k \rfloor ~,
+\end{equation}
+\normalsize
+
+where $p_{a_i}$ represents the proportion of the group defined by the protected attribute value ${a_i}$; this value is set by the user.
+
+The DetConstSort algorithm is presented in Algorithm \ref{alg:detconstsort}. In a nutshell, the algorithm does the following:
+
+\begin{enumerate}
+\item Increase the value of the counter k until the minimum representation requirement at position k is increased for at least one group; pick one candidate from each group with the best score and order them according to their descending score;
+\item For each such candidate:
+\begin{enumerate}
+\item insert the candidate into the last empty position in the recommendation list;
+\item swap the candidate towards the top position until either:
+\begin{itemize}
+\item The score of the candidate above is greater than the score of the inserted candidate, or
+\item The minimum representation requirement for the candidate above would be violated due to the swap.
+\end{itemize}
+\end{enumerate}
+\end{enumerate}
+
+\begin{algorithm}[h]
+\caption{\small{Feasible Mitigation Algorithm Based on Interval Constrained Sorting (DetConstSort)}}
+\label{alg:detconstsort}
+\small
+\begin{algorithmic}[1]
+
+\STATE {\bf foreach} $a_i ~ \in ~ a$, counts$[a_i] := 0$
+\STATE {\bf foreach} $a_i ~ \in ~ a$, minCounts$[a_i] := 0$
+\STATE rankedAttList $:= [ ]$; ~ ~ rankedScoreList $:= [ ]$; ~ ~ maxIndices $:= [ ]$
+\STATE lastEmpty $:= 0$; ~ ~ k $:= 0$
+
+\WHILE {lastEmpty $\leq k_{max}$}
+	\STATE k++
+	\STATE {\bf foreach} $a_i ~ \in ~ a$, tempMinCounts$[a_i] := \lfloor k \cdot p_{a_i} \rfloor$
+	\STATE changedMins $:= \{ a_i: \textrm{ minCounts}[a_i] < \textrm{ tempMinCounts}[a_i] \}$
+
+	\IF {changedMins $\neq$ $\emptyset$}
+		\STATE ordChangedMins $:=$ {\em sort} changedMins {\em by} $s_{a_i, ~ counts[a_i]}$ {\em descending}
+				
+		\FOR {$a_i$ $\in$ ordChangedMins (chosen in the sorted order)}
+			\STATE rankedAttList[lastEmpty] $:= a_i$
+			\STATE rankedScoreList[lastEmpty]  $:= s_{a_i, ~ counts[a_i]}$
+			\STATE maxIndices[lastEmpty] $:=$ k
+			\STATE start $:=$ lastEmpty
+
+			\WHILE {start > 0 and  maxIndices[start - 1] $\geq$ start and rankedScoreList[start-1] < rankedScoreList[start]}
+				\STATE swap(maxIndices[start - 1],  maxIndices[start])
+				\STATE swap(rankedAttList[start - 1],  rankedAttList[start])
+				\STATE swap(rankedScoreList[start - 1],  rankedScoreList[start])
+				\STATE start$- -$
+			\ENDWHILE
+			
+			\STATE counts[$a_i$]++
+			\STATE lastEmpty++
+		\ENDFOR
+
+		\STATE minCounts $:=$ tempMinCounts
+	\ENDIF
+\ENDWHILE
+
+\RETURN [rankedAttList, rankedScoreList]
+\end{algorithmic}
+\vspace{-1ex}
+\end{algorithm}
+
+
+Any algorithm that allows the user to set the desired proportion of groups seemingly permits a continuous shift between WAE and WYSIWYG worldviews. However, \cite{3533380} notes that the DetGreedy algorithm from \cite{linkedin} is incompatible with WAE, as it always picks the highest-scoring available candidate at each step, and in this way introduces a measure of utility into the fairness constraints. Evidently, DetConstSort does this as well, choosing higher-scoring candidates when ties in the representation constraints are present.
+
+Furthermore, in \cite{RAPF}, authors show that DetConstSort does not always produce the closest fair ranking to the initial one; however, I have found that the paper misrepresents the performance of the algorithm due to an error in the code used for running the experiments -- DO I ADD THIS (maybe in appendix? seems important enough).
+
+
+\subsection{Approximate Multi-Valued IPF}\label{subsect:amvipf}
+
+The paper \cite{RAPF} introduces three algorithms to solve the problem of constructing a fair ranking from a possible unfair one of the same size – what the authors call the Individual p-Fair Ranking problem (IPF). The first algorithm, GrBinaryIPF, is only viable for the case of 2 groups and follows the same principle as the DetGreedy algorithm from \cite{linkedin}. Like with DetGreedy from the last paper, the authors provide a proof that GrBinaryIPF produces a fair ranking in the case of ≤2 groups; moreover, the latter is proven to produce the optimal solution to the IPF problem in the case of ≤2 groups.
+
+Here I consider the algorithm the authors call Approximate Multi-Valued IPF. As this algorithm is based on minimum weight perfect matching in graphs, let me give a brief overview of the necessary concepts:
+
+A graph $G(V_t,E)$ consists of a set of vertices $V_t$ and a set of pairs of vertices called "edges" $E$. An edge $e_{vy} = (v,y)$, $v,y \in V_t$ is called incident to the vertices $v$ and $y$; $v$ and $y$ are called its endpoints. A graph is called bipartite if $V_t$ can be divided into two sets $V$ and $Y$ such that no edge in $E$ has both endpoints in either $V$ or $Y$. Such a graph is also denoted as $G(V,Y,E)$. A matching $M \subseteq E$ is a collection of edges s.t. every vertex in $V_t$ is incident to at most one edge in $M$. A perfect matching is a matching where every vertex in $V_t$ is incident to exactly one edge in $M$.
+
+Approximate Multi-Valued IPF exploits the fact that a perfect matching in a bipartite graph produces a one-to-one correspondence between the vertices of the two partition sets. First, the algorithm calculates the lower and upper bound of positions for each candidate of the ranking based on their group membership. It then represents the original score-based ranking $\pi_0$ and the output fair ranking $\pi$ (to be found) as two parts $V$ and $Y$ of a bipartite graph $G(V,Y,E)$: the nodes in $V$ represents the items and the nodes in $Y$ represent their potential position. Each edge $e_{vy}$ represents an assignment of a candidate $v \in V$ to a position $y \in Y$; as $y$ is supposed to be a fair ranking, an edge $e_{vy}$ exists only if $y$ lies between the lower and upper position bound for that candidate. The edges are then given weights $w(e_{vy})$ equal to the Spearman's footrule distance between $y$ and the position of $v$ in $\pi$.
+
+The algorithm then finds a minimum weight perfect matching between $V$ and $Y$ - a matching $M$ that minimizes the sum of the weights of the edges in it. This is a well-researched problem that can be solved in polynomial time \cite{doi:10.1287/ijoc.11.2.138}.
+
+The pseudocode of Approximate Multi-Valued IPF, as it is given in the original paper, is given in Algorithm \ref{alg:amvipf}. 
+
+\begin{algorithm}[h]
+\caption{\small{ApproxMultiVauedIPF(G)}}
+\label{alg:amvipf}
+\small
+\begin{algorithmic}[1]
+
+\FOR {$e_{vy}$ $\in$ $E$}
+	\STATE $w(e_{vy}) \leftarrow |\pi_0(v) - y|$
+\ENDFOR
+\STATE $M \leftarrow find\_minimum\_weight\_perfect\_matching(G)$
+
+\FOR {$e_{vy} \in M$}
+	\STATE $\pi(y) = \pi_0(v)$
+\ENDFOR
+\RETURN $\pi$
+\end{algorithmic}
+\vspace{-1ex}
+\end{algorithm}
+
+This algorithm was not analyzed in \cite{3533380}, but it is evident that it also conforms to the WYSIWYG worldview for the same reason as DetConstSort: aiming to minimize the distance between the initial score-based ranking and a fair one, it will place higher-scoring candidates higher in the ranking. The authors prove that Approximate Multi-Valued IPF admits a 2-approximation factor for the IPF problem in terms of the Kendall-Tau distance to the initial ranking.
+
+\section{Baseline: Integer Linear Programming}\label{sect:ilp}
+
+In order to provide an additional baseline, we introduced an integer linear problem formulation of the p-fair ranking problem. Given a set of lower and upper representational bounds $\alpha_g, \beta_g$ for each group $g\in G$, the optimal p-fair top-k ranking can be computed from an initial ranking $\pi_0$ as follows:
+
+\begin{align*}
+\max & \sum_{i \in [k]} \sum_{j \in [k]} s(i) c(j) x_{ij} &  \\
+%
+ \mbox{s.t.} & \sum_{i \in [k]} x_{ij}  = 1 & \forall j \in [k] \\
+%
+ & \sum_{j \in [k]} x_{ij}  \leq 1 & \forall i \in [k]\\
+%
+ & \lfloor \alpha_g \ell \rfloor \leq \sum_{i: \pi_0(i) \in g} \sum_{j = 1}^\ell x_{ij}  \leq \lceil \beta_g \ell \rceil & \forall \ell \in [k], \forall g \in G
+\\
+%
+% & \lfloor \beta \ell \rfloor \leq \sum_{i \in B} \sum_{j = 1}^\ell x_{ij}  \leq \lceil \beta \ell \rceil & \forall \ell \in [r] \\
+&  x_{ij} \in \{ 0, 1 \}
+\end{align*}
+%
+
+\section{Mallows algorithm for group-oblivious fairness}
+
+In this section I will introduce the algorithm developed and analyzed by us for fairness without group information in top-$k$ rankings. This algorithm is simple: starting from a central ranking, it "shuffles" the candidates randomly according to the Mallows distribution. This, however, produces impressive results in terms of fairness, and addresses more than one fairness concern, as will be discussed later. The pseudocode is given in Algorithm \ref{alg:mallows}
+
+The Mallows distribution was introduced in \cite{mallows} for the problem of modelling rankings. Given a center ranking $\pi_0$ and a decay parameter $\theta$, the model is:
+
+\[
+\Prob_{\pi \sim \mathcal{M}(\pi_0, \theta)}[\pi] = \frac {e^{-\theta d(\pi, \pi_0)}}{Z_k(\theta)}
+\]
+
+The probability of obtaining a given ranking $\pi$ decreases with increasing KT-distance between $\pi$ and $\pi_0$.
+
+This distribution belongs to the location-scale family; its expectation is the center ranking $\pi_0$ and its variance is $\theta$.
+
+\begin{algorithm}[h]
+\caption{\small{Mallows Algorithm}}
+\label{alg:mallows}
+\small
+\begin{algorithmic}[1]
+\STATE $\pi_0 \leftarrow choose\_central\_ranking()$
+\STATE $\pi \leftarrow \mathcal{M}(\pi_0, \theta)$
+\RETURN $\pi$
+\end{algorithmic}
+\vspace{-1ex}
+\end{algorithm}
+
+The choice of $\pi_0$ and $\theta$ is a crucial point of this method. With $\theta = 0$, equal probability is given to all possible permutations; higher values means less changes in the ranking. Varying this parameter allows the user to achieve a tradeoff between fairness and utility.
+
+Similariy, choosing the way in which the central ranking is constructed will also impact the results. The most intuitive approach is to use the score-based ranking of top-$k$ highest-scoring candidates; this allows to achieve the highest utility and puts the method firmly in the WYSIWYG worldview. Another way is to produce a ranking in which each group is represented to some desired degree; this is the approach I use in Chapter 4 \ref{chapt:experiments}, as it produces a certain tradeoff between the individual and group fairness approach. Finally, one may sample a permutation on the entire dataset and take the top-$k$ candidates: with $\theta = 0$, this would fully conform to the WAE worldview.
+
+Along with not requiring information about group membership, another advantage of this approach over many other reranking methods is the randomization, which helps combat position bias. Studies show that top-ranked candidates tend to receive disproportionately more attention than even slighty lower ranked ones \cite{10.1145/1341531.1341545} \cite{joachims2007search}. In deterministic algorithms, items with lower scores will \textbf{always} be presented below higher-scoring ones, bar fairness constraints. This, in turn, may lead to emergent bias - less clicks on a lower-scoring search result will further lower its perceived relevance. Alleviating these effects was the primary concern in the work of Biega et. al. \cite{equityofattentionBiega}; here it is a useful side effect.
+
+%\subsection{Theoretical Analysis}
+
+%MORE THEORETIC ANALYSIS WILL BE HERE (constraints on NDCG, also on InfeasibleIndex or other fairness metric).
+
+

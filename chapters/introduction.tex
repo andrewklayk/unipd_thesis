@@ -1,0 +1,120 @@
+%!TEX root = ../dissertation.tex
+\chapter{Introduction}
+\label{introduction}
+
+
+\section{Motivation for fairness}\label{sect:int_1}
+
+Today, it is no secret that machine learning (ML) algorithms are not always impartial decision-makers. From the widely known case of the COMPAS recidivism risk prediction software in the USA being heavily biased against black offenders \cite{propublicacompas}, to sexist biases in word2vec embeddings \cite{1607.06520}, there have been numerous precedents for AI models exhibiting prejudices.
+
+Biases in ML algorithms can have different origins, but mainly, they can be divided into:
+\begin{itemize}
+\item Pre-existing: biases that exist in real life, and are reproduced by models learning from biased data;
+\item Technical: biases that arise from technical constraints. These may be caused by the algorithm itself adding bias that was absent from the training data, or by the conditions in which the algorithm is used. An example of the latter may be the size of a web page that displays the results of a ranking algorithm (e.g. a web search); limited space allows the user to look only at the several highest-scoring results.
+\item Emergent: biases that arise from user interaction. Coming back to the example above, the users clicking more on the highest-scoring results will only increase their perceived relevance, and thus push the lower-scoring ones even deeper into obscurity.
+\end{itemize}
+
+Among those, arguably the most dangerous one is pre-existing bias, as it reinforces real-world injustices. An important point to state is that it can not be rectified through "unawareness": we can not eliminate bias by simply removing the sensitive information from the data. This is because, in most cases, it can still be inferred from the other attributes. For example, an individual’s race may be highly correlated with their address, their media preferences, their political views and so on. A very recent example of this phenomenon comes from the GPT4 large language model. The model was given several texts in standard English and in African American Vernacular English (AAVE) – a dialect used predominantly by the black population of the US. When asked its thoughts on the authors of the texts, the model’s responses to the AAVE speakers were overwhelmingly negative. At the same time, when asked openly about race, GPT4 did not exhibit any harmful prejudices \cite{2403.00742}.
+
+Evidently, a more difficult approach is required. The existing works on this topic will be discussed shortly in subsection \ref{sect:int_2} and in more depth in chapter \ref{chapt:algorithms}.
+
+\subsection{Blind fairness}\label{subsect:int_1_1}
+
+In algorithmic fairness, we divide the data entries into groups defined by some attributes – race, gender, etc. However, what happens if we do not know which attributes to select?
+
+In some cases, the definitions may seem obvious – for example, race, gender, age bracket and so on. However, often the bias can come from an unexpected angle: take, for example, the International Baccalaureate incident of 2020, where, due to COVID-19 restrictions, the final school exam was substituted with an automatic grade-prediction algorithm. After the grades have been issued, the algorithm was found to overwhelmingly discriminate based on which school each student attended \cite{nyt_baccalaureate}.
+
+Another issue with choosing the protected attributes is that of intersectionality: the discrimination may take place over several factors at once. For example, an algorithm may produce fair results for white adults, white children, and black adults, but not for black children. As such, a fairness intervention with an insufficient group definition (in this case, only race or only age) is not guaranteed to remove discrimination.
+
+Finally, there is a privacy concern: individuals may not want their sensitive information, such as race, gender, address, etc. to be available to a third party – even if it is, supposedly, to ensure fairness.
+
+This leads us to the problem of “fairness without demographics” – or ensuring fairness when the group definitions or individual group membership is not known – and a relaxed version of this task, when information about group membership is noisy. This topic has attracted some attention in recent years, but the focus of most of those works is on classification tasks \cite{https://arxiv.org/pdf/1904.05419.pdf}, \cite{MithraCoverage}, \cite{https://www.vldb.org/pvldb/vol14/p2719-moskovitch.pdf}. In \cite{detectionofgroups}, the authors introduce an algorithm to detect groups with biased representation in ranking; I will discuss this work shortly.
+
+\section{Ranking: preliminaries and notation}\label{sect:int_2}
+
+In a fair learning-to-rank (LtR) setting, we are given a set $C$ of “candidates” or “individuals” – items to be ranked. Each candidate is described by a set $X$ of attributes (or “features”) and a score $s$. Each candidate belongs to a group defined by a combination of sensitive features (sensitive attributes) $A\subseteq C$. These may be binary (e.g. “income greater than \$35000”), or multinary (e.g. race, non-binary gender identity, city). The protected group is the one we suspect the algorithm is biased against – often a historically disadvantaged demographic or a minority (in the latter case, the bias may come from lack of data). We denote item at position $i$ in the ranking $\pi$ with $\pi_i$ (sometimes also seen as $\pi(i)$) and use $\pi^{-1}(i)$ to denote the position of item $i$ in $\pi$.
+
+A common metric used to measure fairness in rankings is the \textbf{Spearman footrule distance}. Given two rankings $\pi$ and $\sigma$, $|\pi| = |\sigma|=k$, it measures the total number of positions the elements of $\pi$ were moved in $\sigma$:
+\begin{equation*}\label{eq:spearman}
+F(\pi, \sigma) = \sum_{i \in (\pi \cap \sigma)} |\pi^{-1}(i) - \sigma^{-1}(i)|
+\end{equation*}
+
+Another metric is the Kendall-Tau (Kendall Tau, Kendall's Tau, KT) distance, which measures the number of discordant pairs between $\pi$ and $\sigma$:
+\begin{equation*}\label{eq:kt}
+d_{KT}(\pi, \sigma) = \sum_{i,j \leq k, i < j} \mathbb{1}\{ (\pi(i) - \pi(j))(\sigma(i) - \sigma(j)) < 0 \}
+\end{equation*}
+
+As the goal of many rankings is to put the most "relevant" results on top, a measure of relevance, or utility, is required. The most widespread is the Discounted Cumulative Gain:
+
+\[ DCG(\pi) = \sum_{i=1}^k \frac{s(\pi(i))}{\log(1+i)}, \]
+
+It can also be normalized against the DCG of a “perfect” ranking – one where items are sorted according to their descending scores. The latter is called the Ideal DCG (IDCG), and the Normalized DCG is defined as:
+
+\[NDCG(\pi) = \frac{DCG(\pi)}{IDCG(\pi)}\]
+
+
+
+
+\section{Existing solutions}\label{sect:int_3}
+
+\subsection{...for ranking}:
+
+The task of learning-to-rank itself is not the focus of this work because, as I will show shortly, many FairML algorithms are focused on either modifying the data or modifying the output of the machine learning model. However, it is useful to give a short overview of this task and the models used for solving it. 
+
+The core components of an LtR problem are \cite{Qin2010LETORAB}:
+\begin{itemize}
+\item A set of queries $Q = {q_i}_{i=1}^{|Q|}$;
+\item A set of documents $D_q = {d_{q,i}}_{i=1}^{n_q}$ associated with each query $q$;
+\item A set of feature vectors $x_{q,j} = \langle \psi_1 (q, d_{q,j}), ..., \psi_M (q, d_{q,j})) \rangle \in \mathbb{R}^M$ associated with each query-document pair; each element $\psi_i (...)$ is usually a score produced by a simpler ranking algorithm, e.g. cosine similarity between the tf-idf encondings of the query and the document, BM25 score of the pair, etc.;
+\item A set of relevance labels $l_{q,j}$ associated with each query-document pair.
+\end{itemize}
+
+This way, a dataset for such a problem consists of a set of feature vectors $x_{q,j}$ and corresponding labels $l_{q,j}$.
+
+The goal of LtR models is to learn a function $f$ that minimizes the loss function $L$ over the training set. The choice of the loss function divides the models into three main categories:
+
+\begin{itemize}
+\item Pointwise: the loss function is calculated on each query-document pair individually
+\item Pairwise: for each query, the model learns to learn pairwise preferences between pairs of documents, transforming the problem into a classification one;
+examples are Microsoft’s RankNet \cite{RankNet}, LambdaRank \cite{LambdaRank} and LambdaMART \cite{LambdaMART};
+\item Listwise: for each query, the loss function is calculated on the entire list: for an example, consider ListNet \cite{ListNet} or SoftRank \cite{taylor2008softrank}.
+\end{itemize}
+
+The loss function usually, in some way, aims to optimize NDCG of the resulting ranking.
+
+Comparing the models is beyond the scope of this thesis; in previous research, however, listwise \cite{10.1145/2866571} and pairwise \cite{RankNet} models tend to outperform pointwise ones.
+
+\subsection{...for fairness in ranking}
+
+There is a growing body of work on fair ranking. Pre-processing algorithms focus on eliminating bias in the data by learning (or otherwise producing) a “fair” representation of each individual that eliminates information about their group membership, like ifair \cite{ifair}. In-processing approaches introduce regularization to the algorithm’s loss function that penalizes discrimination: DELTR and Fair-PG-Rank for listwise ranking models, \cite{beutelpairwise} for pairwise ones. Finally, post-processing algorithms rerank the model’s output to make it more fair: \cite{linkedin}, \cite{RAPF}.
+
+This thesis focuses on post-processing; I justify this choice in more detail in section 2. Some advantages include explainability of post-processing algorithms, ease of implementation into existing pipelines, and good performance in terms of fairness.
+
+However, the overwhelming majority of FairML algorithms assume perfect information about group membership of candidates. A notable exception is the work of Moskovitch et al. \cite{detectionofgroups}, in which the authors attempt to achieve fairness without group information, improving on a previous work by Pastor et al. \cite{https://arxiv.org/abs/2108.07450}. The algorithm they introduce aims to detect the widest collection of sensitive attribute values such that a group defined by those values is underrepresented in top-k; the lower bound of acceptable representation, as well as k, are defined by the user. These group definitions may then be used as input to a post-processing algorithm, or otherwise utilized in order to improve fairness.
+
+Yet this work, in turn, assumes that the user knows the values of the sensitive attributes of each candidate – and, as discussed earlier, that information is not always available. In the next subsection, I will describe our approach to completely group-oblivious fairness.
+
+\section{Our contribution}\label{sect:int_4}
+
+Our approach to fairness without demographics is inspired by work on Differential Privacy by Dwork et al. \cite{foundationsofDPDwork}, where noise is admixed into database records to protect the users’ privacy. Similarly, we “mix up” a ranking (which may be the output of an ML model) by sampling the Mallows’ distribution \cite{mallows}; by changing the variance of the latter, we can achieve different results in terms of fairness.
+
+This does not require any information on group membership; in fact, the only necessary information is the order in which the candidates are ranked. Furthermore, this process is computationally fast: it just needs one sample from a random distribution.
+
+The research this thesis is based on is due to be presented at the 1st International Workshop on Fairness in AI (\url{https://fairnessinai.github.io/}); the workshop paper preprint is available at \url{https://arxiv.org/abs/2403.19419v1}.
+
+\section{Thesis structure}\label{sect:structure}
+
+This thesis is organized as follows:
+
+\begin{itemize}
+\item In Chapter \ref{chapt:background}, I will describe the theoretical basics of algorithmic fairness, as well as the metrics for quantifying it.
+\item In Chapter \ref{chapt:algorithms}, I will lay out two state-of-the-art algorithms used for achieving fairness, and then introduce our Mallows algorithm.
+\item In Chapter \ref{chapt:experiments}, I will present an experimental comparison of the algorithms from Section 3 in a setting with perfect, noisy, and absent group information.
+\end{itemize}
+
+
+\section{Code availability}\label{sect:code_availability}
+
+One of the algorithms used in this work, DetConstSort \cite{linkedin}, as well as several supporting metrics for rankings and fairness, were implemented and published in the IBM-sponsored AI Fairness 360 Python toolkit (\href{https://github.com/Trusted-AI/AIF360}{https://github.com/Trusted-AI/AIF360}) as part of my internship at the Czech Technical University in Prague.
+
+The full code used for the Experiments section of this thesis can be accessed at \url{https://github.com/andrewklayk/fairness_with_mallows_distribution}.
