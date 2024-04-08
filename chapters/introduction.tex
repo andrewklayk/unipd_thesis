@@ -9,14 +9,16 @@ Today, it is no secret that machine learning (ML) algorithms are not always impa
 
 Biases in ML algorithms can have different origins, but mainly, they can be divided into:
 \begin{itemize}
-\item Pre-existing: biases that exist in real life, and are reproduced by models learning from biased data;
+\item Pre-existing: biases that are reproduced by models learning from biased data. The bias in the data can be representative of real-world prejudices (e.g. reflecting the wage disparity between men and women), or it can be produced by a flawed data collection process (e.g. picking a non-representative sample for a group of the population);
 \item Technical: biases that arise from technical constraints. These may be caused by the algorithm itself adding bias that was absent from the training data, or by the conditions in which the algorithm is used. An example of the latter may be the size of a web page that displays the results of a ranking algorithm (e.g. a web search); limited space allows the user to look only at the several highest-scoring results.
 \item Emergent: biases that arise from user interaction. Coming back to the example above, the users clicking more on the highest-scoring results will only increase their perceived relevance, and thus push the lower-scoring ones even deeper into obscurity.
 \end{itemize}
 
 Among those, arguably the most dangerous one is pre-existing bias, as it reinforces real-world injustices. An important point to state is that it can not be rectified through "unawareness": we can not eliminate bias by simply removing the sensitive information from the data. This is because, in most cases, it can still be inferred from the other attributes. For example, an individual’s race may be highly correlated with their address, their media preferences, their political views and so on. A very recent example of this phenomenon comes from the GPT4 large language model. The model was given several texts in standard English and in African American Vernacular English (AAVE) – a dialect used predominantly by the black population of the US. When asked its thoughts on the authors of the texts, the model’s responses to the AAVE speakers were overwhelmingly negative. At the same time, when asked openly about race, GPT4 did not exhibit any harmful prejudices \cite{2403.00742}.
 
-Evidently, a more difficult approach is required. The existing works on this topic will be discussed shortly in subsection \ref{sect:int_2} and in more depth in chapter \ref{chapt:algorithms}.
+In addition to the moral argument for fairness, there exists a legal one. The European Union "Artificial Intelligence Act" adopted in March of 2023 is partly concerned with possible discrimination performed by machine learning models \cite{aiact}. As such, it is likely that future ML products developed or deployed in the EU will have to comply with some kind of non-discrimination or fairness regulations.
+
+The existing works on the topic of algorithmic fairness will be discussed shortly in subsection \ref{sect:int_2} and in more depth in chapter \ref{chapt:algorithms}.
 
 \subsection{Blind fairness}\label{subsect:int_1_1}
 
@@ -34,14 +36,14 @@ This leads us to the problem of “fairness without demographics” – or ensur
 
 In a fair learning-to-rank (LtR) setting, we are given a set $C$ of “candidates” or “individuals” – items to be ranked. Each candidate is described by a set $X$ of attributes (or “features”) and a score $s$. Each candidate belongs to a group defined by a combination of sensitive features (sensitive attributes) $A\subseteq C$. These may be binary (e.g. “income greater than \$35000”), or multinary (e.g. race, non-binary gender identity, city). The protected group is the one we suspect the algorithm is biased against – often a historically disadvantaged demographic or a minority (in the latter case, the bias may come from lack of data). We denote item at position $i$ in the ranking $\pi$ with $\pi_i$ (sometimes also seen as $\pi(i)$) and use $\pi^{-1}(i)$ to denote the position of item $i$ in $\pi$.
 
-A common metric used to measure fairness in rankings is the \textbf{Spearman footrule distance}. Given two rankings $\pi$ and $\sigma$, $|\pi| = |\sigma|=k$, it measures the total number of positions the elements of $\pi$ were moved in $\sigma$:
+A common metric used to measure fairness in rankings is the Spearman footrule distance. Given two rankings $\pi$ and $\sigma$, $|\pi| = |\sigma|=k$, it measures the total number of positions the elements of $\pi$ were moved in $\sigma$:
 \begin{equation*}\label{eq:spearman}
 F(\pi, \sigma) = \sum_{i \in (\pi \cap \sigma)} |\pi^{-1}(i) - \sigma^{-1}(i)|
 \end{equation*}
 
 Another metric is the Kendall-Tau (Kendall Tau, Kendall's Tau, KT) distance, which measures the number of discordant pairs between $\pi$ and $\sigma$:
 \begin{equation*}\label{eq:kt}
-d_{KT}(\pi, \sigma) = \sum_{i,j \leq k, i < j} \mathbb{1}\{ (\pi(i) - \pi(j))(\sigma(i) - \sigma(j)) < 0 \}
+d_{KT}(\pi, \sigma) = \sum_{i,j \leq k, i < j} 1\{ (\pi(i) - \pi(j))(\sigma(i) - \sigma(j)) < 0 \}
 \end{equation*}
 
 As the goal of many rankings is to put the most "relevant" results on top, a measure of relevance, or utility, is required. The most widespread is the Discounted Cumulative Gain:
@@ -52,12 +54,9 @@ It can also be normalized against the DCG of a “perfect” ranking – one whe
 
 \[NDCG(\pi) = \frac{DCG(\pi)}{IDCG(\pi)}\]
 
-
-
-
 \section{Existing solutions}\label{sect:int_3}
 
-\subsection{...for ranking}:
+\subsection{...for ranking}
 
 The task of learning-to-rank itself is not the focus of this work because, as I will show shortly, many FairML algorithms are focused on either modifying the data or modifying the output of the machine learning model. However, it is useful to give a short overview of this task and the models used for solving it. 
 
@@ -74,19 +73,19 @@ This way, a dataset for such a problem consists of a set of feature vectors $x_{
 The goal of LtR models is to learn a function $f$ that minimizes the loss function $L$ over the training set. The choice of the loss function divides the models into three main categories:
 
 \begin{itemize}
-\item Pointwise: the loss function is calculated on each query-document pair individually
-\item Pairwise: for each query, the model learns to learn pairwise preferences between pairs of documents, transforming the problem into a classification one;
+\item Pointwise: the loss function is calculated on each query-document pair individually;
+\item Pairwise: for each query, the model learns to predict pairwise preferences between pairs of documents, transforming the problem into a classification one;
 examples are Microsoft’s RankNet \cite{RankNet}, LambdaRank \cite{LambdaRank} and LambdaMART \cite{LambdaMART};
 \item Listwise: for each query, the loss function is calculated on the entire list: for an example, consider ListNet \cite{ListNet} or SoftRank \cite{taylor2008softrank}.
 \end{itemize}
 
 The loss function usually, in some way, aims to optimize NDCG of the resulting ranking.
 
-Comparing the models is beyond the scope of this thesis; in previous research, however, listwise \cite{10.1145/2866571} and pairwise \cite{RankNet} models tend to outperform pointwise ones.
+Comparing the models is beyond the scope of this thesis; in previous research, however, listwise \cite{10.1145/2866571} and pairwise \cite{RankNet} models have been shown to outperform pointwise ones.
 
 \subsection{...for fairness in ranking}
 
-There is a growing body of work on fair ranking. Pre-processing algorithms focus on eliminating bias in the data by learning (or otherwise producing) a “fair” representation of each individual that eliminates information about their group membership, like ifair \cite{ifair}. In-processing approaches introduce regularization to the algorithm’s loss function that penalizes discrimination: DELTR and Fair-PG-Rank for listwise ranking models, \cite{beutelpairwise} for pairwise ones. Finally, post-processing algorithms rerank the model’s output to make it more fair: \cite{linkedin}, \cite{RAPF}.
+There is a growing body of work on fair ranking. The methods used for this task are classified into pre-processing, in-processing, and post-processing. Pre-processing algorithms focus on eliminating bias in the data by learning (or otherwise producing) a “fair” representation of each individual that eliminates information about their group membership, like ifair \cite{ifair}. In-processing approaches introduce regularization to the algorithm’s loss function that penalizes discrimination: DELTR \cite{DELTR} and Fair-PG-Rank \cite{fpgrank} for listwise ranking models, and Beutel et al. \cite{beutelpairwise} introduced a regularization term for pairwise ones. Finally, post-processing algorithms rerank the model’s output to make it more fair \cite{linkedin}, \cite{RAPF}.
 
 This thesis focuses on post-processing; I justify this choice in more detail in section 2. Some advantages include explainability of post-processing algorithms, ease of implementation into existing pipelines, and good performance in terms of fairness.
 
@@ -106,7 +105,7 @@ The research this thesis is based on is due to be presented at the 1st Internati
 
 \subsection{Contribution to AIF360}
 
-As part of my internship and thesis work, I implemented one of the state-of-the-art algorithms for fairness in rankings described here, DetConstSort \cite{linkedin}, and contributed it to the IBM-sponsored AI Fairness 360 Python toolkit (\url{https://github.com/Trusted-AI/AIF360/pull/461}) along with several metrics for dealing with fairness in rankings, unit tests, a usage demo in Jupyter Notebook, and other supporting code.
+As part of my internship and thesis work, I implemented one of the state-of-the-art algorithms for fairness in rankings described here, DetConstSort \cite{linkedin}, and contributed it to the IBM-sponsored AI Fairness 360 Python package (\url{https://github.com/Trusted-AI/AIF360/pull/461}) along with several metrics for dealing with fairness in rankings, unit tests, a usage demo in Jupyter Notebook, and other supporting code. AI Fairness 360 is a widely-used open-source Python package that provides tools for detecting and eliminating algorithmic bias with over 1000 citations \cite{8843908}.
 
 \section{Thesis structure}\label{sect:structure}
 
