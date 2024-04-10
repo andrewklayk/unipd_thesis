@@ -104,7 +104,7 @@ Specifically, we introduced noise into the calculations of the constraints by ea
     \end{align*}
     This was done to lessen the probability of making the problem infeasible, while still retaining noise.
 \end{itemize}
-We repeated this step 15 times to reliably measure the effect of the noise.
+We repeate this step 15 times to reliably measure the effect of the noise.
 
 We also run the Mallows algorithm on the same weakly-p-fair ranking, using the weakly-p-fair ranking as a central ranking and dispersion parameters of 0.5 and 1, taking 1 or the best of 15 samples.
 
@@ -114,7 +114,7 @@ The experiment is repeated for rankings of size {10, 20, 30, 40, 50, 60, 70, 80,
 
 \subsubsection{Experiment 3: Results}
 
-The experimental results are presented in Figs.~\ref{plot:pfair_hous} and \ref{plot:ndcg}. 
+The experimental results are presented in Figs.~\ref{plot:pfair}, ~\ref{plot:pfair_hous} and \ref{plot:ndcg}. 
 Fig.~\ref{plot:pfair_hous} shows the median percentage of positions satisfying P-fairness with respect to the $Housing$ protected attribute. Since DetConstSort,  ApproxMultiValuedIPF and the ILP use the $Age-Sex$ protected attribute to create the fair ranking, the resulting ranking fairness has to do with another attribute's distribution, therefore we cannot have any guarantees.  For comparison only, we include Fig. \ref{plot:pfair}, so that it is clear how the same ranking can have different fainress scores according to different attribute. We argue that the addition of noise can improve the results regarding different protected attributes, leading to a more balanced output, regardless of the target protected attribute. This approach seems like a compromise among all the different protected attributes that may be present and about which we have no knowledge.
 
 As shown in Fig.~\ref{plot:pfair}, under noisy conditions, the Mallows algorithm performs well compared to state-of-the-art algorithms (DetConstSort and ApproxMultiValuedIPF).

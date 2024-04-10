@@ -1,0 +1,8 @@
+%!TEX root = ../dissertation.tex
+%\appendix
+\chapter{Remarks on "Rank Aggregation with Proportionate Fairness"}
+\label{appendix1}
+
+During my work on this thesis, I attempted to reproduce the comparison done in \cite{RAPF} between the Approximate Multi-Valued IPF algorithm introduced in the paper and the DetConstSort algorthim from \cite{linkedin}. I was unable replicate their results, reliably getting much better results from DetConstSort in terms of fairness constraints than those presented in the paper. Here, I present a possible explanation.
+
+In the code provided with the paper (\url{https://github.com/MouinulIslamNJIT/Rank-Aggregation_Proportionate_Fairness}), line 30 of the DetConstSort implementation reads $maxIndices[lastEmpty] = k$. Replacing it with $k$

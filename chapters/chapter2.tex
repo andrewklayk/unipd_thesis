@@ -101,8 +101,6 @@ The DetConstSort algorithm is presented in Algorithm \ref{alg:detconstsort}. In 
 
 Any algorithm that allows the user to set the desired proportion of groups seemingly permits a continuous shift between WAE and WYSIWYG worldviews. However, \cite{3533380} notes that the DetGreedy algorithm from \cite{linkedin} is incompatible with WAE, as it always picks the highest-scoring available candidate at each step, and in this way introduces a measure of utility into the fairness constraints. Evidently, DetConstSort does this as well, choosing higher-scoring candidates when ties in the representation constraints are present.
 
-Furthermore, in \cite{RAPF}, authors show that DetConstSort does not always produce the closest fair ranking to the initial one; however, I have found that the paper misrepresents the performance of the algorithm due to an error in the code used for running the experiments -- DO I ADD THIS (maybe in appendix? seems important enough).
-
 
 \subsection{Approximate Multi-Valued IPF}\label{subsect:amvipf}
 
@@ -162,11 +160,13 @@ In order to provide an additional baseline, we introduced an integer linear prob
 
 In this section I will introduce the algorithm developed and analyzed by us for fairness without group information in top-$k$ rankings. This algorithm is simple: starting from a central ranking, it "shuffles" the candidates randomly according to the Mallows distribution. This, however, produces impressive results in terms of fairness, and addresses more than one fairness concern, as will be discussed later. The pseudocode is given in Algorithm \ref{alg:mallows}
 
-The Mallows distribution was introduced in \cite{mallows} for the problem of modelling rankings. Given a center ranking $\pi_0$ and a decay parameter $\theta$, the model is:
+The Mallows distribution was introduced in \cite{mallows} for the problem of modelling rankings. Given a center ranking $\pi_0$, a decay parameter $\theta$, and a distance metric $d$ the model is:
 
 \[
 \Prob_{\pi \sim \mathcal{M}(\pi_0, \theta)}[\pi] = \frac {e^{-\theta d(\pi, \pi_0)}}{Z_k(\theta)}
 \]
+
+where $Z_k(\theta)$ is a normalization constant.
 
 The probability of obtaining a given ranking $\pi$ decreases with increasing KT-distance between $\pi$ and $\pi_0$.
 
